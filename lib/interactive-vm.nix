@@ -8,12 +8,46 @@
 }:
 
 let
-  vm_disko = (diskoLib.testLib.prepareDiskoConfig config diskoLib.testLib.devices).disko;
+  collectLuksNames =
+    value:
+    if builtins.isAttrs value then
+      (lib.optional ((value.type or null) == "luks") value.name)
+      ++ (lib.concatMap collectLuksNames (builtins.attrValues value))
+    else if builtins.isList value then
+      lib.concatMap collectLuksNames value
+    else
+      [ ];
+
+  forceLuksTestPassword =
+    value:
+    if builtins.isAttrs value then
+      if (value.type or null) == "luks" then
+        (lib.mapAttrs (_: forceLuksTestPassword) value)
+        // {
+          askPassword = true;
+          keyFile = null;
+          passwordFile = null;
+          settings = builtins.removeAttrs (value.settings or { }) [
+            "keyFile"
+            "keyFileSize"
+            "keyFileOffset"
+          ];
+        }
+      else
+        lib.mapAttrs (_: forceLuksTestPassword) value
+    else if builtins.isList value then
+      map forceLuksTestPassword value
+    else
+      value;
+
+  rawVmDiskoDevices = (diskoLib.testLib.prepareDiskoConfig config diskoLib.testLib.devices).disko.devices;
+  luksDeviceNames = collectLuksNames rawVmDiskoDevices;
+  vm_disko_devices = forceLuksTestPassword rawVmDiskoDevices;
   cfg_ =
     (lib.evalModules {
       modules = lib.singleton {
         # _file = toString input;
-        imports = lib.singleton { disko.devices = vm_disko.devices; };
+        imports = lib.singleton { disko.devices = vm_disko_devices; };
         options = {
           disko.devices = lib.mkOption {
             type = diskoLib.toplevel;
@@ -56,6 +90,10 @@ in
   ];
 
   disko.testMode = true;
+
+  boot.initrd.luks.devices = lib.genAttrs luksDeviceNames (_: {
+    keyFile = lib.mkForce null;
+  });
 
   disko.imageBuilder.copyNixStore = false;
   disko.imageBuilder.extraConfig = {
