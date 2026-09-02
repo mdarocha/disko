@@ -289,7 +289,7 @@ in
           installTest = diskoLib.testLib.makeDiskoTest {
             inherit extendModules pkgs;
             name = "${config.networking.hostName}-disko";
-            disko-config = builtins.removeAttrs config [ "_module" ];
+            disko-config = builtins.removeAttrs vmVariantWithDisko.config [ "_module" ];
             testMode = "direct";
             bootCommands = cfg.tests.bootCommands;
             efi = cfg.tests.efi;
