@@ -10,10 +10,43 @@
 let
   cfg = config.disko;
 
+  forceLuksTestPassword =
+    value:
+    if builtins.isAttrs value then
+      if (value.type or null) == "luks" then
+        (lib.mapAttrs (_: forceLuksTestPassword) value)
+        // {
+          askPassword = true;
+          keyFile = null;
+          passwordFile = null;
+          settings = builtins.removeAttrs (value.settings or { }) [
+            "keyFile"
+            "keyFileSize"
+            "keyFileOffset"
+          ];
+        }
+      else
+        lib.mapAttrs (_: forceLuksTestPassword) value
+    else if builtins.isList value then
+      map forceLuksTestPassword value
+    else
+      value;
+
+  testExtraConfig = extendModules {
+    modules = [ config.disko.tests.extraConfig ];
+  };
+
   vmVariantWithDisko = extendModules {
     modules = [
       ./lib/interactive-vm.nix
       config.disko.tests.extraConfig
+      {
+        disko.devices = lib.mkOverride 40 (
+          forceLuksTestPassword (
+            lib.recursiveUpdate cfg.devices (config.disko.tests.extraConfig.disko.devices or { })
+          )
+        );
+      }
     ];
   };
 in
@@ -289,7 +322,7 @@ in
           installTest = diskoLib.testLib.makeDiskoTest {
             inherit extendModules pkgs;
             name = "${config.networking.hostName}-disko";
-            disko-config = builtins.removeAttrs vmVariantWithDisko.config [ "_module" ];
+            disko-config = builtins.removeAttrs testExtraConfig.config [ "_module" ];
             testMode = "direct";
             bootCommands = cfg.tests.bootCommands;
             efi = cfg.tests.efi;
