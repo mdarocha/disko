@@ -162,6 +162,7 @@ let
         installedTopLevel =
           ((if extendModules != null then extendModules else installed-system-eval.extendModules) {
             modules = [
+              installed-system
               (
                 { config, ... }:
                 {
