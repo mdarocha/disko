@@ -230,6 +230,15 @@ in
         '';
         default = { };
       };
+
+      extraInstallerConfig = lib.mkOption {
+        description = ''
+          Extra NixOS config for the live installer VM used by `system.build.installTest`,
+          as opposed to `extraConfig`, which configures the system being installed.
+          Useful for VM-only hardware such as `virtualisation.tpm.enable`.
+        '';
+        default = { };
+      };
     };
   };
 
@@ -295,6 +304,7 @@ in
             efi = cfg.tests.efi;
             enableOCR = cfg.tests.enableOCR;
             extraSystemConfig = cfg.tests.extraConfig;
+            extraInstallerConfig = cfg.tests.extraInstallerConfig;
             extraTestScript = cfg.tests.extraChecks;
           };
 
