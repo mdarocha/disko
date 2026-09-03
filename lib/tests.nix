@@ -390,6 +390,12 @@ let
                     "if=pflash,format=raw,unit=1,readonly=on,file=${pkgs.OVMFFull.variables}"
                   ]
                 ''}
+                ${lib.optionalString (efi && pkgs.stdenv.hostPlatform.isx86 && pkgs.OVMFFull.systemManagementModeRequired) ''
+                  start_command += [
+                    "-machine", "q35,smm=on",
+                    "-global", "driver=cfi.pflash01,property=secure,value=on",
+                  ]
+                ''}
                 ${lib.optionalString enableCanokey ''
                   start_command += ["-device", "pci-ohci,id=usb-bus",
                     "-device", "canokey,bus=usb-bus.0,file=/tmp/canokey-file"
