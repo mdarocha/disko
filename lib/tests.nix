@@ -392,7 +392,7 @@ let
                 ''}
                 ${lib.optionalString (efi && pkgs.stdenv.hostPlatform.isx86 && pkgs.OVMFFull.systemManagementModeRequired) ''
                   start_command += [
-                    "-machine", "q35,smm=on",
+                    "-machine", "q35,smm=on,accel=tcg",
                     "-global", "driver=cfi.pflash01,property=secure,value=on",
                   ]
                 ''}
