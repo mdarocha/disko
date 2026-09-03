@@ -392,8 +392,8 @@ let
                     "-device", "canokey,bus=usb-bus.0,file=/tmp/canokey-file"
                   ]
                 ''}
+                ${lib.optionalString tpmCfg.enable "start_swtpm()"}
                 ${lib.optionalString tpmCfg.enable ''
-                  start_swtpm()
                   start_command += [
                       "-chardev", f"socket,id=chrtpm,path={NIX_SWTPM_DIR}/socket.ctrl",
                       "-tpmdev", "emulator,id=tpm_dev_0,chardev=chrtpm",
