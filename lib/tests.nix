@@ -354,6 +354,9 @@ let
                       ],
                       check=True,
                   )
+                  tpm2tools_env = dict(os.environ, TPM2TOOLS_TCTI=f"swtpm:path={NIX_SWTPM_DIR}/socket")
+                  for tpm2_args in (["${pkgs.tpm2-tools}/bin/tpm2_startup", "--clear"], ["${pkgs.tpm2-tools}/bin/tpm2_startup"], ["${pkgs.tpm2-tools}/bin/tpm2_shutdown"], ["${pkgs.tpm2-tools}/bin/tpm2_shutdown", "--clear"]):
+                      subprocess.run(tpm2_args, check=True, env=tpm2tools_env)
             ''}
 
 
