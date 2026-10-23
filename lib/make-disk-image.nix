@@ -68,8 +68,11 @@ let
   );
 
   cleanedConfig = diskoLib.testLib.prepareDiskoConfig config diskoLib.testLib.devices;
+  mergedDiskoDevices = lib.recursiveUpdate cleanedConfig.disko.devices (
+    cfg.extraConfig.disko.devices or { }
+  );
   virtualDevicesModule = {
-    disko.devices = lib.mkForce cleanedConfig.disko.devices;
+    disko.devices = lib.mkForce mergedDiskoDevices;
     boot.loader.grub.devices = lib.mkForce cleanedConfig.boot.loader.grub.devices;
   };
   system = extendModules {
@@ -77,6 +80,7 @@ let
       cfg.extraConfig
       {
         disko.testMode = true;
+
       }
     ];
   };
@@ -89,6 +93,7 @@ let
         modules = [
           cfg.extraConfig
           {
+
             boot.kernelPackages = lib.mkDefault cfg.kernelPackages;
             nixpkgs.hostPlatform = lib.mkForce pkgs.stdenv.hostPlatform;
             nixpkgs.buildPlatform = lib.mkForce pkgs.stdenv.hostPlatform;

@@ -209,8 +209,11 @@ in
           We try to automatically detect efi based on the configured bootloader.
         '';
         type = lib.types.bool;
-        defaultText = "config.boot.loader.systemd-boot.enable || config.boot.loader.grub.efiSupport";
-        default = config.boot.loader.systemd-boot.enable || config.boot.loader.grub.efiSupport;
+        defaultText = "config.boot.loader.systemd-boot.enable || config.boot.loader.grub.efiSupport || config.boot.lanzaboote.enable";
+        default =
+          config.boot.loader.systemd-boot.enable
+          || config.boot.loader.grub.efiSupport
+          || (config.boot.lanzaboote.enable or false);
       };
 
       enableOCR = lib.mkOption {
@@ -236,6 +239,15 @@ in
         description = ''
           Extra NixOS config for your test. Can be used to specify a different luks key for tests.
           A dummy key is in /tmp/secret.key
+        '';
+        default = { };
+      };
+
+      extraInstallerConfig = lib.mkOption {
+        description = ''
+          Extra NixOS config for the live installer VM used by `system.build.installTest`,
+          as opposed to `extraConfig`, which configures the system being installed.
+          Useful for VM-only hardware such as `virtualisation.tpm.enable`.
         '';
         default = { };
       };
@@ -298,12 +310,13 @@ in
           installTest = diskoLib.testLib.makeDiskoTest {
             inherit extendModules pkgs;
             name = "${config.networking.hostName}-disko";
-            disko-config = builtins.removeAttrs config [ "_module" ];
+            disko-config = builtins.removeAttrs vmVariantWithDisko.config [ "_module" ];
             testMode = "direct";
             bootCommands = cfg.tests.bootCommands;
             efi = cfg.tests.efi;
             enableOCR = cfg.tests.enableOCR;
             extraSystemConfig = cfg.tests.extraConfig;
+            extraInstallerConfig = cfg.tests.extraInstallerConfig;
             extraTestScript = cfg.tests.extraChecks;
           };
 

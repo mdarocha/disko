@@ -164,6 +164,7 @@ let
         installedTopLevel =
           ((if extendModules != null then extendModules else installed-system-eval.extendModules) {
             modules = [
+              installed-system
               (
                 { config, ... }:
                 {
@@ -319,8 +320,47 @@ let
 
         testScript =
           { nodes, ... }:
+          let
+            tpmCfg = nodes.machine.virtualisation.tpm;
+          in
           ''
             import shlex
+            ${lib.optionalString tpmCfg.enable ''
+              import os
+              import subprocess
+
+              NIX_SWTPM_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "disko-test-swtpm")
+              os.makedirs(NIX_SWTPM_DIR, exist_ok=True)
+              os.environ["NIX_SWTPM_DIR"] = NIX_SWTPM_DIR
+
+              def start_swtpm():
+                  subprocess.run(
+                      [
+                          "${tpmCfg.package}/bin/swtpm_ioctl",
+                          "--unix", f"{NIX_SWTPM_DIR}/socket.ctrl",
+                          "--stop",
+                      ],
+                      check=False,
+                  )
+                  subprocess.run(
+                      [
+                          "${lib.getExe tpmCfg.package}",
+                          "socket",
+                          "--tpmstate", f"dir={NIX_SWTPM_DIR}",
+                          "--server", f"type=unixio,path={NIX_SWTPM_DIR}/socket",
+                          "--ctrl", f"type=unixio,path={NIX_SWTPM_DIR}/socket.ctrl",
+                          "--pid", f"file={NIX_SWTPM_DIR}/pid",
+                          "--daemon",
+                          "--flags", "not-need-init",
+                          "--tpm2",
+                      ],
+                      check=True,
+                  )
+                  tpm2tools_env = dict(os.environ, TPM2TOOLS_TCTI=f"swtpm:path={NIX_SWTPM_DIR}/socket")
+                  for tpm2_args in (["${pkgs.tpm2-tools}/bin/tpm2_startup", "--clear"], ["${pkgs.tpm2-tools}/bin/tpm2_startup"], ["${pkgs.tpm2-tools}/bin/tpm2_shutdown"], ["${pkgs.tpm2-tools}/bin/tpm2_shutdown", "--clear"]):
+                      subprocess.run(tpm2_args, check=True, env=tpm2tools_env)
+            ''}
+
 
             def disks(oldmachine, num_disks):
                 disk_flags = []
@@ -355,6 +395,14 @@ let
                 ${lib.optionalString enableCanokey ''
                   start_command += ["-device", "pci-ohci,id=usb-bus",
                     "-device", "canokey,bus=usb-bus.0,file=/tmp/canokey-file"
+                  ]
+                ''}
+                ${lib.optionalString tpmCfg.enable "start_swtpm()"}
+                ${lib.optionalString tpmCfg.enable ''
+                  start_command += [
+                      "-chardev", f"socket,id=chrtpm,path={NIX_SWTPM_DIR}/socket.ctrl",
+                      "-tpmdev", "emulator,id=tpm_dev_0,chardev=chrtpm",
+                      "-device", "${tpmCfg.deviceModel},tpmdev=tpm_dev_0",
                   ]
                 ''}
                 machine = create_machine(start_command=" ".join(start_command), **kwargs)
