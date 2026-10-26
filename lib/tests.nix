@@ -129,7 +129,7 @@ let
         num-disks = builtins.length (lib.attrNames testConfigBooted.disko.devices.disk);
 
         installed-system =
-          { config, ... }:
+          { ... }:
           {
             imports = [
               (lib.optionalAttrs (testMode == "direct") tsp-config)
@@ -145,13 +145,7 @@ let
             # config for tests to make them run faster or work at all
             documentation.enable = false;
             hardware.enableAllFirmware = lib.mkForce false;
-            # FIXME: we don't have an systemd in stage-1 equialvent for this
-            boot.initrd.preDeviceCommands = lib.mkIf (!config.boot.initrd.systemd.enable) ''
-              echo -n 'secretsecret' > /tmp/secret.key
-            '';
-            boot.initrd.secrets = lib.mkIf config.boot.initrd.systemd.enable {
-              "/tmp/secret.key" = pkgs.writeText "secret.key" "secretsecret";
-            };
+            boot.initrd.secrets."/tmp/secret.key" = pkgs.writeText "secret.key" "secretsecret";
             boot.consoleLogLevel = lib.mkForce 100;
             boot.loader.systemd-boot.enable = lib.mkDefault efi;
           };
